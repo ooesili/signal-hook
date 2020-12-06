@@ -210,7 +210,7 @@ jobs:
         uses: Swatinem/rust-cache@v1
 
       - name: Run the check
-        run: cargo check --all --tests --target=${{ matrix.target }}
+        run: cargo check --all --all-features --tests --target=${{ matrix.target }}
 
   # Check some either weirder platforms, but these support only the base crate,
   # not all the fancy async ones.
@@ -242,4 +242,4 @@ jobs:
         uses: Swatinem/rust-cache@v1
 
       - name: Run the check
-        run: cargo check --tests --target=${{ matrix.target }}
+        run: cargo check --tests --all-features --target=${{ matrix.target }}

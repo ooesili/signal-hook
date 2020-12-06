@@ -18,11 +18,12 @@ maintenance = { status = "actively-developed" }
 
 [features]
 default = ["iterator"]
-iterator = []
+iterator = ["signal-hook-consts"]
 
 [workspace]
 members = [
     "./",
+    "signal-hook-consts",
     "signal-hook-registry",
     "signal-hook-tokio",
     "signal-hook-mio",
@@ -31,10 +32,14 @@ members = [
 
 [dependencies]
 libc = "~0.2"
+signal-hook-consts = { version = "~0.1", path = "signal-hook-consts", optional = true }
 signal-hook-registry = { version = "~1.2", path = "signal-hook-registry" }
 
 [dev-dependencies]
 serial_test = "~0.5"
+
+[build-dependencies]
+cc = "1.0"
 
 [package.metadata.docs.rs]
 all-features = true

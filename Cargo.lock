@@ -905,8 +905,10 @@ dependencies = [
 name = "signal-hook"
 version = "0.2.1"
 dependencies = [
+ "cc",
  "libc",
  "serial_test",
+ "signal-hook-consts",
  "signal-hook-registry 1.2.2",
 ]
 
@@ -919,6 +921,13 @@ dependencies = [
  "libc",
  "serial_test",
  "signal-hook",
+]
+
+[[package]]
+name = "signal-hook-consts"
+version = "0.1.0"
+dependencies = [
+ "cc",
 ]
 
 [[package]]
