@@ -1,3 +1,4 @@
+#![allow(missing_docs)]
 //! An abstraction over exfiltrating information out of signal handlers.
 //!
 //! The [`Exfiltrator`] trait provides a way to abstract the information extracted from a signal
@@ -11,9 +12,10 @@
 //! Currently, the trait is sealed and all methods hidden. This is likely temporary, until some
 //! experience with them is gained.
 
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 
-use libc::{c_int, siginfo_t};
+use libc::{c_int, pid_t, siginfo_t, uid_t};
+use signal_hook_consts::{SI_QUEUE, SI_USER};
 
 mod sealed {
     use std::fmt::Debug;
@@ -119,6 +121,88 @@ unsafe impl sealed::Exfiltrator for SignalOnly {
             Some(signal)
         } else {
             None
+        }
+    }
+}
+
+#[non_exhaustive]
+#[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
+pub enum OriginType {
+    Unknown,
+    Process {
+        pid: pid_t,
+        uid: uid_t,
+    }
+}
+
+#[non_exhaustive]
+#[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
+pub struct Origin {
+    pub signal: c_int,
+    pub origin_type: OriginType,
+}
+
+#[derive(Debug)]
+pub struct OriginStorage(AtomicU64);
+
+impl Default for OriginStorage {
+    fn default() -> Self {
+        OriginStorage(AtomicU64::new(WithOrigin::EMPTY))
+    }
+}
+
+#[derive(Clone, Copy, Debug, Default)]
+pub struct WithOrigin;
+
+impl WithOrigin {
+    const fn compose(pid: pid_t, uid: uid_t) -> u64 {
+        let pid = (pid as u32) as u64;
+        let uid = (uid as u32) as u64;
+        (pid << 32) | uid
+    }
+    const EMPTY: u64 = Self::compose(-1, 1);
+    const UNKNOWN: u64 = Self::compose(-1, 2);
+}
+
+unsafe impl sealed::Exfiltrator for WithOrigin {
+    type Storage = OriginStorage;
+    type Output = Origin;
+
+    fn supports_signal(&self, _: c_int) -> bool {
+        true
+    }
+
+    fn store(&self, slot: &Self::Storage, _: c_int, info: &siginfo_t) {
+        if info.si_code == SI_QUEUE || info.si_code == SI_USER {
+            let pid = unsafe { info.si_pid() };
+            let uid = unsafe { info.si_uid() };
+            slot.0.store(Self::compose(pid, uid), Ordering::SeqCst);
+        } else {
+            slot.0.store(Self::UNKNOWN, Ordering::SeqCst);
+        }
+    }
+
+    fn load(&self, slot: &Self::Storage, signal: c_int) -> Option<Self::Output> {
+        let loaded = slot.0.swap(Self::EMPTY, Ordering::SeqCst);
+        match loaded {
+            Self::EMPTY => None,
+            Self::UNKNOWN => {
+                Some(Origin {
+                    signal,
+                    origin_type: OriginType::Unknown,
+                })
+            },
+            composed => {
+                let pid = ((composed >> 32) as u32) as pid_t;
+                let uid = (composed as u32) as uid_t;
+                Some(Origin {
+                    signal,
+                    origin_type: OriginType::Process {
+                        pid,
+                        uid,
+                    }
+                })
+            }
         }
     }
 }
