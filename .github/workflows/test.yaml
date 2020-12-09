@@ -21,7 +21,10 @@ jobs:
           - stable
           - beta
           - nightly
+          # Introduction of self: Arc<..>, needed for the iterator module
           - 1.36.0
+          # Introduction of non_exhaustive, used at certain exfiltrators
+          - 1.40.0
 
     runs-on: ${{ matrix.os }}
 
