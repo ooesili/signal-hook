@@ -1,5 +1,10 @@
+#define _POSIX_C_SOURCE 199309L
 #include <stdio.h>
-#include <sys/signal.h>
+#include <signal.h>
+
+int xy(const siginfo_t *x) {
+	return x->si_uid;
+}
 
 /*
  * Unfortunately, some constants are not exported by libc. We cheat and
